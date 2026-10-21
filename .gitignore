@@ -1,0 +1,16 @@
+# Node modules
+node_modules/
+.next/
+out/
+
+# Environment files
+.env*.local
+.env
+
+# Data storage
+data/
+
+# OS files
+.DS_Store
+Thumbs.db
+*.log
