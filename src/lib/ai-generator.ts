@@ -139,6 +139,32 @@ const INDUSTRY_LEXICONS: Record<
       { name: "Studio White", hex: "#FAFAFA", rgb: "250, 250, 250", role: "Background / Light", usage: "Clean gallery canvas" },
     ],
   },
+  "Education & EdTech": {
+    prefixes: ["Edu", "Learn", "Mind", "Cogni", "Schol", "Intel", "Acad", "Skill", "Know", "Velo", "Lumi", "Nexus"],
+    roots: ["quest", "path", "spark", "forge", "brain", "craft", "class", "base", "logic", "pulse", "spring", "bridge"],
+    suffixes: ["io", "ify", "iq", "ly", "ora", "ix", "lab", "hub", "flow", "stack"],
+    adjectives: ["Empowering", "Transformative", "Intuitive", "Mastery-Driven", "Enlightening", "Adaptive"],
+    colors: [
+      { name: "Scholar Royal", hex: "#2563EB", rgb: "37, 99, 235", role: "Primary", usage: "Academic trust, primary call-to-actions, hero banner" },
+      { name: "Discovery Amber", hex: "#F59E0B", rgb: "245, 158, 11", role: "Secondary", usage: "Milestone badges, achievement stars, course tracks" },
+      { name: "Mentor Teal", hex: "#0D9488", rgb: "13, 148, 136", role: "Accent", usage: "Progress indicators, interactive quizzes, student tags" },
+      { name: "Deep Academy", hex: "#0F172A", rgb: "15, 23, 42", role: "Dark / Neutral", usage: "Curriculum text, authoritative headings" },
+      { name: "Campus Clean", hex: "#F8FAFC", rgb: "248, 250, 252", role: "Background / Light", usage: "Crisp digital classroom background" },
+    ],
+  },
+  "Real Estate & PropTech": {
+    prefixes: ["Terra", "Haven", "Domus", "Nest", "Vista", "Acre", "Loft", "Apex", "Vault", "Prime", "Arch", "Civic"],
+    roots: ["space", "land", "brick", "stone", "view", "crest", "gate", "bay", "key", "yard", "block", "point"],
+    suffixes: ["io", "ix", "ora", "ly", "a", "ex", "co", "hub", "place", "group"],
+    adjectives: ["Prestigious", "Enduring", "Strategic", "Architectural", "Panoramic", "Unrivaled"],
+    colors: [
+      { name: "Estate Navy", hex: "#1E3A8A", rgb: "30, 58, 138", role: "Primary", usage: "Institutional prestige, architectural markers" },
+      { name: "Warm Champagne", hex: "#D4AF37", rgb: "212, 175, 55", role: "Secondary", usage: "Luxury property badges, exclusive listings" },
+      { name: "Stone Slate", hex: "#475569", rgb: "71, 85, 105", role: "Accent", usage: "Floorplan borders, metadata tags" },
+      { name: "Granite Obsidian", hex: "#0F172A", rgb: "15, 23, 42", role: "Dark / Neutral", usage: "Contract typography, structural headers" },
+      { name: "Marble White", hex: "#F8FAFC", rgb: "248, 250, 252", role: "Background / Light", usage: "Gallery and architectural showcase canvas" },
+    ],
+  },
 };
 
 // Default fallback lexicon
@@ -221,51 +247,105 @@ function calculateNameScore(
   };
 }
 
+const STOP_WORDS = new Set([
+  "a", "about", "above", "after", "again", "against", "all", "allinone", "also", "am", "an", "and", "any", "are",
+  "arent", "as", "at", "be", "because", "been", "before", "being", "below", "between", "both", "build", "builds",
+  "building", "but", "by", "can", "cannot", "could", "did", "do", "does", "doing", "down", "during", "each", "few",
+  "for", "from", "further", "had", "has", "have", "having", "he", "her", "here", "hers", "herself", "him", "himself",
+  "his", "how", "i", "if", "in", "into", "instant", "instantly", "is", "it", "its", "itself", "just", "like", "make",
+  "makes", "making", "me", "more", "most", "my", "myself", "no", "nor", "not", "of", "off", "on", "once", "one", "ones", "only",
+  "or", "other", "ought", "our", "ours", "ourselves", "out", "over", "own", "platform", "platforms", "same", "she", "should",
+  "so", "some", "such", "than", "that", "the", "their", "theirs", "them", "themselves", "then", "there", "these",
+  "they", "this", "those", "through", "to", "too", "tool", "tools", "under", "until", "up", "very", "was", "we", "were",
+  "what", "when", "where", "which", "while", "who", "whom", "why", "with", "wont", "would", "you", "your", "yours",
+  "business", "company", "service", "services", "system", "systems", "app", "application", "applications", "way", "ways"
+]);
+
+const HIGH_VALUE_BRAND_SEEDS = [
+  "brand", "identity", "identities", "design", "designs", "naming", "name", "names", "asset", "assets",
+  "studio", "visual", "visuals", "craft", "forge", "spark", "pulse", "nexus", "core",
+  "learn", "edu", "skill", "skills", "academy", "mind", "intellect", "logic", "vector", "cortex",
+  "apex", "vision", "flow", "stack", "vault", "sync", "cloud", "crest", "prime", "tech", "ai", "smart"
+];
+
+function extractDomainKeywords(text: string): string[] {
+  const words = text
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !STOP_WORDS.has(w));
+
+  const cleanMap: Record<string, string> = {
+    identities: "identity",
+    naming: "brand",
+    assets: "asset",
+    designs: "design",
+    learnings: "learn",
+    educations: "edu",
+    technologies: "tech",
+  };
+
+  const mapped = words.map((w) => cleanMap[w] || w);
+  const unique = Array.from(new Set(mapped));
+
+  // Prioritize high-value seeds
+  const prioritized = unique.sort((a, b) => {
+    const aVal = HIGH_VALUE_BRAND_SEEDS.includes(a) ? 1 : 0;
+    const bVal = HIGH_VALUE_BRAND_SEEDS.includes(b) ? 1 : 0;
+    return bVal - aVal;
+  });
+
+  return prioritized.length > 0 ? prioritized : ["brand", "spark", "vision", "core"];
+}
+
 // Generate algorithmic names per category
 function generateAlgorithmicNames(input: GenerateNamesInput): GeneratedName[] {
   const lexicon = getLexicon(input.industry);
-  const ideaWords = input.businessIdea
-    .replace(/[^a-zA-Z\s]/g, "")
-    .split(/\s+/)
-    .filter((w) => w.length > 3 && !["with", "that", "this", "from", "your", "have"].includes(w.toLowerCase()));
+  const extractedKeywords = extractDomainKeywords(input.businessIdea);
 
-  const mainKeyword = (input.keywordsInclude || ideaWords[0] || lexicon.roots[0]).trim();
-  const cleanKeyword = mainKeyword.charAt(0).toUpperCase() + mainKeyword.slice(1).toLowerCase();
+  const k1 = input.keywordsInclude
+    ? input.keywordsInclude.split(/[\s,]+/)[0].trim()
+    : extractedKeywords[0] || lexicon.roots[0];
+  const k2 = extractedKeywords[1] || lexicon.roots[1] || "core";
+  const k3 = extractedKeywords[2] || lexicon.roots[2] || "pulse";
+
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  const cK1 = capitalize(k1);
+  const cK2 = capitalize(k2);
+  const cK3 = capitalize(k3);
 
   const generatedList: GeneratedName[] = [];
   let idCounter = 1;
 
-  // 1. Premium Names (3-5 names)
+  // 1. Premium Names (4 names)
   const premiumBases = [
-    `${lexicon.prefixes[0]}${lexicon.roots[0].charAt(0).toUpperCase() + lexicon.roots[0].slice(1)}`,
-    `Aura${cleanKeyword.slice(0, 4)}`,
-    `${lexicon.prefixes[1] || "Nexus"}${lexicon.suffixes[0] || "ia"}`,
-    `Vanguard${cleanKeyword.slice(0, 3)}`,
-    `${cleanKeyword} Capital`,
+    `${lexicon.prefixes[0] || "Apex"}${cK1}`,
+    `Aura${cK2}`,
+    `${cK1} Capital`,
+    `Vanguard ${cK3}`,
   ];
-  premiumBases.slice(0, 4).forEach((name, idx) => {
+  premiumBases.forEach((name) => {
     const score = calculateNameScore(name, "premium", input.industry, input.targetAudience);
     generatedList.push({
       id: `name_p_${idCounter++}`,
       name,
       category: "premium",
       categoryLabel: CATEGORY_LABELS["premium"],
-      meaning: `Derived from elite classical roots conveying prestige, enduring trust, and high-value leadership.`,
+      meaning: `Derived from elite classical roots conveying prestige, enduring trust, and high-value leadership in ${input.industry}.`,
       reasoning: `Signals established quality and aspirational status to ${input.targetAudience}, establishing an immediate premium price positioning.`,
       style: "Prestige, Timeless, Architectural",
       score,
     });
   });
 
-  // 2. Short & Catchy Names (4-5 names)
+  // 2. Short & Catchy Names (4 names)
   const shortBases = [
-    `${cleanKeyword.slice(0, 4)}o`,
-    `${lexicon.roots[1] || "flux"}y`,
-    `${lexicon.prefixes[2] || "Velo"}`.slice(0, 4),
-    `${cleanKeyword.slice(0, 3)}ly`,
-    `Z${cleanKeyword.slice(0, 3)}`,
+    `${cK1.slice(0, 4)}o`,
+    `${cK2.slice(0, 3)}ly`,
+    `${lexicon.prefixes[1] || "Velo"}${cK1.slice(0, 3)}`,
+    `${cK3.slice(0, 4)}x`,
   ];
-  shortBases.slice(0, 4).forEach((name) => {
+  shortBases.forEach((name) => {
     const score = calculateNameScore(name, "short_catchy", input.industry, input.targetAudience);
     generatedList.push({
       id: `name_sc_${idCounter++}`,
@@ -279,15 +359,14 @@ function generateAlgorithmicNames(input: GenerateNamesInput): GeneratedName[] {
     });
   });
 
-  // 3. Modern Names (4-5 names)
+  // 3. Modern Names (4 names)
   const modernBases = [
-    `${cleanKeyword}${lexicon.suffixes[1] || "io"}`,
-    `${lexicon.prefixes[3] || "Nova"}${lexicon.roots[2] || "wave"}`,
-    `${cleanKeyword}stack`,
-    `${lexicon.prefixes[4] || "Sync"}${cleanKeyword.slice(0, 4)}`,
-    `${cleanKeyword}flow`,
+    `${cK1}stack`,
+    `${cK2}flow`,
+    `${lexicon.prefixes[2] || "Sync"}${cK1}`,
+    `${cK3}base`,
   ];
-  modernBases.slice(0, 4).forEach((name) => {
+  modernBases.forEach((name) => {
     const score = calculateNameScore(name, "modern", input.industry, input.targetAudience);
     generatedList.push({
       id: `name_m_${idCounter++}`,
@@ -301,15 +380,14 @@ function generateAlgorithmicNames(input: GenerateNamesInput): GeneratedName[] {
     });
   });
 
-  // 4. Creative Names (4-5 names)
+  // 4. Creative Names (4 names)
   const creativeBases = [
-    `${lexicon.adjectives[0] || "Prism"}${cleanKeyword.slice(0, 4)}`,
-    `${cleanKeyword}craft`,
-    `Iron & ${cleanKeyword}`,
-    `${lexicon.prefixes[5] || "Lumi"}${lexicon.roots[3] || "forge"}`,
-    `${cleanKeyword} Canvas`,
+    `${cK1}Forge`,
+    `Iron & ${cK2}`,
+    `${lexicon.adjectives[0] || "Prism"} ${cK3}`,
+    `${cK2} Canvas`,
   ];
-  creativeBases.slice(0, 4).forEach((name) => {
+  creativeBases.forEach((name) => {
     const score = calculateNameScore(name, "creative", input.industry, input.targetAudience);
     generatedList.push({
       id: `name_c_${idCounter++}`,
@@ -323,15 +401,14 @@ function generateAlgorithmicNames(input: GenerateNamesInput): GeneratedName[] {
     });
   });
 
-  // 5. Professional Names (4-5 names)
+  // 5. Professional Names (4 names)
   const profBases = [
-    `${cleanKeyword} Dynamics`,
-    `${lexicon.prefixes[0] || "Apex"} Global`,
-    `${cleanKeyword} Solutions`,
-    `${lexicon.prefixes[2] || "Veritas"} ${cleanKeyword}`,
-    `${cleanKeyword} Trust`,
+    `${cK1} Dynamics`,
+    `${cK2} Global Partners`,
+    `${lexicon.prefixes[3] || "Veritas"} ${cK1}`,
+    `${cK3} Strategic`,
   ];
-  profBases.slice(0, 4).forEach((name) => {
+  profBases.forEach((name) => {
     const score = calculateNameScore(name, "professional", input.industry, input.targetAudience);
     generatedList.push({
       id: `name_pr_${idCounter++}`,
@@ -345,15 +422,14 @@ function generateAlgorithmicNames(input: GenerateNamesInput): GeneratedName[] {
     });
   });
 
-  // 6. Unique Invented Names (4-5 names)
+  // 6. Unique Invented Names (4 names)
   const inventedBases = [
-    `${lexicon.prefixes[1] || "Syn"}${lexicon.roots[1] || "al"}${lexicon.suffixes[2] || "ora"}`,
-    `${cleanKeyword.slice(0, 3)}ivio`,
-    `Zep${cleanKeyword.slice(0, 3)}a`,
-    `K${lexicon.roots[2] || "ono"}lytix`,
-    `V${cleanKeyword.slice(0, 4)}ent`,
+    `${cK1.slice(0, 4)}ify`,
+    `${cK2.slice(0, 3)}ora`,
+    `Syn${cK3.slice(0, 3)}ix`,
+    `Nov${cK1.slice(0, 3)}is`,
   ];
-  inventedBases.slice(0, 4).forEach((name) => {
+  inventedBases.forEach((name) => {
     const score = calculateNameScore(name, "invented", input.industry, input.targetAudience);
     generatedList.push({
       id: `name_inv_${idCounter++}`,

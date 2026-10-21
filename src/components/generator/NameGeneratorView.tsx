@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   Wand2,
   Sparkles,
@@ -20,6 +20,7 @@ import {
   Flame,
   Star,
   ExternalLink,
+  ChevronRight,
 } from "lucide-react";
 import { GeneratedName, NameCategory } from "@/types";
 import { useProject } from "@/context/ProjectContext";
@@ -43,16 +44,21 @@ export function NameGeneratorView() {
   const { apiKey } = useAuth();
   const { success, error, info } = useToast();
 
+  const resultsRef = useRef<HTMLDivElement | null>(null);
+
   // Form State
-  const [businessIdea, setBusinessIdea] = useState(currentProject?.businessIdea || "");
+  const [businessIdea, setBusinessIdea] = useState(
+    currentProject?.businessIdea || "An all-in-one AI platform that builds instant corporate identities, naming, and visual design assets."
+  );
   const [industry, setIndustry] = useState(currentProject?.industry || "Tech & AI");
-  const [targetAudience, setTargetAudience] = useState(currentProject?.targetAudience || "Modern Professionals");
+  const [targetAudience, setTargetAudience] = useState(currentProject?.targetAudience || "Founders, Creators, & SaaS Agencies");
   const [language, setLanguage] = useState(currentProject?.language || "English");
   const [personality, setPersonality] = useState(currentProject?.personality || "Futuristic & Trustworthy");
   const [keywordsInclude, setKeywordsInclude] = useState(currentProject?.keywordsInclude || "");
   const [keywordsExclude, setKeywordsExclude] = useState(currentProject?.keywordsExclude || "");
   const [nameLength, setNameLength] = useState<"short" | "medium" | "any">(currentProject?.nameLength || "any");
 
+  const [localNames, setLocalNames] = useState<GeneratedName[]>(currentProject?.names || []);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<"all" | NameCategory | "favorites">("all");
@@ -96,6 +102,8 @@ export function NameGeneratorView() {
         return;
       }
 
+      setLocalNames(data.names);
+
       if (currentProject) {
         setCurrentProject({
           ...currentProject,
@@ -112,6 +120,11 @@ export function NameGeneratorView() {
       }
 
       success("Names Generated! 🎉", `Generated ${data.names.length} brand names across 6 categories.`);
+
+      // Smooth scroll down to results section
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 150);
     } catch {
       error("Network Error", "Failed to connect to generation service.");
     } finally {
@@ -127,16 +140,19 @@ export function NameGeneratorView() {
   };
 
   const handleSaveEdit = (nameId: string) => {
-    if (!currentProject || !editedNameText.trim()) return;
-    const updated = currentProject.names.map((n) =>
+    if (!editedNameText.trim()) return;
+    const updated = localNames.map((n) =>
       n.id === nameId ? { ...n, name: editedNameText.trim() } : n
     );
-    setCurrentProject({ ...currentProject, names: updated });
+    setLocalNames(updated);
+    if (currentProject) {
+      setCurrentProject({ ...currentProject, names: updated });
+    }
     setEditingNameId(null);
     success("Name Updated", "Brand name modified.");
   };
 
-  const namesList = currentProject?.names || [];
+  const namesList = localNames.length > 0 ? localNames : currentProject?.names || [];
 
   // Filter names based on category & search
   const filteredNames = namesList.filter((n) => {
@@ -329,11 +345,38 @@ export function NameGeneratorView() {
             </button>
           </div>
         </form>
+
+        {/* Live Generation Banner Feedback */}
+        {isGenerating && (
+          <div className="mt-4 p-4 rounded-2xl bg-brand-50 dark:bg-brand-950/60 border border-brand-200 dark:border-brand-800 text-center animate-pulse flex items-center justify-center gap-3">
+            <RefreshCw className="w-5 h-5 animate-spin text-brand-600" />
+            <span className="text-xs font-bold text-brand-900 dark:text-brand-200">
+              Analyzing phonetics, morphology, and industry resonance for &ldquo;{industry}&rdquo;...
+            </span>
+          </div>
+        )}
+
+        {namesList.length > 0 && !isGenerating && (
+          <div className="mt-4 p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs font-bold text-emerald-800 dark:text-emerald-300">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>{namesList.length} Brand Names Ready Below!</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => resultsRef.current?.scrollIntoView({ behavior: "smooth" })}
+              className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:underline flex items-center gap-1"
+            >
+              <span>Scroll to Results</span>
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Results Header & Category Filter Tabs */}
       {namesList.length > 0 && (
-        <div className="space-y-4">
+        <div ref={resultsRef} id="generated-results" className="space-y-4 pt-2">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             {/* Category Tabs */}
             <div className="flex flex-wrap gap-1.5 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
